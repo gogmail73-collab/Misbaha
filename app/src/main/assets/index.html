@@ -12,7 +12,7 @@
 <body>
 <main class="app">
 <div class="brand">MISBAHA</div><h1 class="title">السُّبْحَة الإلكترونية</h1>
-<div class="muted">عدد التسبيحات</div><div class="count" id="count">0</div>
+<div class="muted">عدد التسبيحات</div><div class="count" id="count" role="status" aria-live="polite" aria-atomic="true">0</div>
 <button class="tasbeeh" id="tap" aria-label="زيادة التسبيح">سَبِّح</button>
 <div class="actions"><button class="small" id="undo">تراجع</button><button class="small" id="reset">تصفير</button></div>
 <input class="field" id="name" maxlength="60" placeholder="اسم الذكر (اختياري)">
@@ -20,14 +20,17 @@
 <section class="history"><h3>الأذكار المحفوظة</h3><div id="history" class="muted">لا توجد أذكار محفوظة بعد</div></section>
 </main>
 <script>
-let count=Number(localStorage.getItem('misbaha-count')||0);
-let records=JSON.parse(localStorage.getItem('misbaha-records')||'[]');
+function readCount(){try{const n=Number.parseInt(localStorage.getItem('misbaha-count')||'0',10);return Number.isSafeInteger(n)&&n>=0?n:0}catch{return 0}}
+function readRecords(){try{const value=JSON.parse(localStorage.getItem('misbaha-records')||'[]');if(!Array.isArray(value))return [];return value.filter(x=>x&&typeof x==='object'&&Number.isSafeInteger(Number(x.count))&&Number(x.count)>0).slice(0,500).map(x=>({name:String(x.name||'ذكر بدون اسم').slice(0,60),count:Number(x.count),date:String(x.date||'')}))}catch{return []}}
+function persist(key,value){try{localStorage.setItem(key,value);return true}catch{return false}}
+let count=readCount();
+let records=readRecords();
 const el=id=>document.getElementById(id);
-function render(){el('count').textContent=count;localStorage.setItem('misbaha-count',count);if(!records.length){el('history').textContent='لا توجد أذكار محفوظة بعد';return;}el('history').innerHTML='';records.forEach((r,i)=>{const d=document.createElement('div');d.className='item';const info=document.createElement('span');info.textContent=r.name+' — '+r.count+' تسبيحة';const del=document.createElement('button');del.className='delete';del.textContent='حذف';del.onclick=()=>{records.splice(i,1);localStorage.setItem('misbaha-records',JSON.stringify(records));render()};d.append(info,del);el('history').append(d)})}
-el('tap').onclick=()=>{count++;render()};
+function render(){el('count').textContent=count;persist('misbaha-count',String(count));if(!records.length){el('history').textContent='لا توجد أذكار محفوظة بعد';return;}el('history').innerHTML='';records.forEach((r,i)=>{const d=document.createElement('div');d.className='item';const info=document.createElement('span');info.textContent=r.name+' — '+r.count+' تسبيحة';const del=document.createElement('button');del.className='delete';del.textContent='حذف';del.onclick=()=>{records.splice(i,1);persist('misbaha-records',JSON.stringify(records));render()};d.append(info,del);el('history').append(d)})}
+el('tap').onclick=()=>{if(count<Number.MAX_SAFE_INTEGER)count++;render();try{if(navigator.vibrate)navigator.vibrate(12)}catch{}};
 el('undo').onclick=()=>{if(count>0)count--;render()};
 el('reset').onclick=()=>{if(confirm('هل تريد تصفير العداد؟')){count=0;render()}};
-el('save').onclick=()=>{const name=el('name').value.trim()||'ذكر بدون اسم';if(count===0){alert('ابدأ التسبيح أولاً');return;}records.unshift({name,count,date:new Date().toLocaleDateString('ar-EG')});localStorage.setItem('misbaha-records',JSON.stringify(records));count=0;el('name').value='';render()};
+el('save').onclick=()=>{const name=el('name').value.trim()||'ذكر بدون اسم';if(count===0){alert('ابدأ التسبيح أولاً');return;}records.unshift({name,count,date:new Date().toLocaleDateString('ar-EG')});persist('misbaha-records',JSON.stringify(records));count=0;el('name').value='';render()};
 render();
 </script>
 </body></html>
