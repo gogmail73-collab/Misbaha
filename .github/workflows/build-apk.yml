@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -29,6 +31,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Check bundled JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          html = Path('app/src/main/assets/index.html').read_text(encoding='utf-8')
+          scripts = re.findall(r'<script>(.*?)</script>', html, flags=re.S)
+          if not scripts:
+              raise SystemExit('No inline script found')
+          Path('/tmp/misbaha-inline.js').write_text('\n'.join(scripts), encoding='utf-8')
+          PY
+          node --check /tmp/misbaha-inline.js
       - name: Build debug APK
         run: gradle assembleDebug
       - name: Upload APK
